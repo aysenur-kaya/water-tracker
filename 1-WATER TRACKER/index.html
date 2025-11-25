@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WATER TRACKER</title>
+  <style>
+/* GENEL SAYFA TASARIMI */
+body {
+  font-family: Arial, sans-serif;
+  background: #f0f2f5;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;   /* Yatay ortalama */
+  align-items: flex-start;    /* Yukarıdan başlasın */
+  min-height: 100vh;
+}
+
+/* ANA KUTU (wrapper) */
+.wrapper {
+  width: 90%;
+  max-width: 420px;
+  margin-top: 40px;
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+}
+
+/* Başlık */
+h3 {
+  text-align: center;
+  margin-top: 25px;
+}
+
+/* Input alanı */
+#goalInput {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
+#goalInput:focus {
+  border-color: #4A90E2;
+}
+
+/* Butonlar */
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: white;
+}
+
+#setGoalBtn {
+  background: #4A90E2;
+}
+
+#addWaterBtn {
+  background: #007bff;
+}
+
+#resetBtn {
+  background: #ff5733;
+}
+
+/* İçilen su bilgisi */
+h2 {
+  font-size: 20px;
+  text-align: center;
+}
+
+/* Progress Container */
+#progressContainer {
+  width: 100%;
+  height: 30px;
+  background: #e0e0e0;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 15px 0;
+}
+
+/* Mavi ilerleme barı */
+#progressBar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(45deg, #4A90E2, #0066cc);
+  transition: width 0.4s ease-in-out; /* AKICI ANİMASYON */
+}
+
+/* Tek seferde su şişesi */
+img#waterBottle {
+  width: 80px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Tebrik / motivasyon mesajı */
+#message {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: bold;
+  color: #444;
+}
+
+/* --- HISTORY LİSTESİ --- */
+#historyList {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+/* History liste elemanları */
+#historyList li {
+  list-style: none;
+  margin: 6px 0;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #eee;
+  font-size: 14px;
+  color: #333;
+}
+    
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+  <!--1.hedef belirleme -->
+  <div>
+    <label>Günlük hedef (ml):</label>
+    <input type="number" id="goalInput" placeholder="örn:2000">
+    <button id="setGoalBtn">Hedefi Kaydet</button>
+  </div>
+
+
+   <!--2. içilen miktar gösterimi-->
+  <h2>İçilen su : <span id="currentAmount">0</span>ml</h2>
+
+    <!--water şişe görüntüsü-->
+  <div class="bottle-container">
+    <img src="images/9258629d87f0f99362cfc747338f99b4.jpg" id="waterBottle" alt="water bottle">
+</div>
+
+    <!--3.progress alanı -->
+  <div id="progressContainer" >
+    <div id="progressBar" ></div>
+  </div>
+
+
+  <!--4. su ekelem butonu -->
+  <button id="addWaterBtn">+200 ml ekle</button>
+
+
+   <!--5. reset butonu-->
+  <button id="resetBtn">Günü Sıfırla</button>
+
+
+  <!--6. History listesi-->
+  <h3>Günlük Geçmişi</h3>
+  <ul id="historyList"></ul>
+
+
+  <!--7. tebrik mesajı-->
+  <p id="message"></p>
+
+  </div>
+
+  
+
+
+  <script>
+    
+    //STEP 1: DOM ELEMANLARINI SEÇELİM
+    const goalInput =document.getElementById('goalInput');
+    const setGoalBtn =document.getElementById('setGoalBtn');
+    const currentAmountText =document.getElementById('currentAmount');
+    const progressContainer =document.getElementById('progressContainer');
+    const progressBar =document.getElementById('progressBar');
+    const addWaterBtn =document.getElementById('addWaterBtn');
+    const resetBtn =document.getElementById('resetBtn');
+    const historyList = document.getElementById('historyList');
+    const message =document.getElementById('message');
+
+
+    //STEP 2:  LocalStorage'dan VERİ YÜKLE
+
+
+    const savedGoal = localStorage.getItem('dailyGoal');
+    const savedAmount = localStorage.getItem('currentAmount');
+
+
+    //STEP 3: STATE(veri)
+     let dailyGoal = savedGoal ? Number(savedGoal) : 0;
+    let currentAmount = savedAmount ? Number(savedAmount) : 0;
+
+    //history yükleme
+    let history = JSON.parse(localStorage.getItem('history')) || [];
+
+
+
+     //STEP 3,5 :eğer veri varsa ekrana uygula
+     if(savedGoal) {
+      goalInput.value =savedGoal;
+      }
+
+      if(savedAmount) {
+        currentAmount =Number(savedAmount);
+        currentAmountText.textContent= savedAmount;
+        updateProgress();
+      }
+
+
+
+      //RANDOM MOTİVASYON MESAJLARI
+      const motivationMessages = [
+        'az az ilerlemek de ilerlemektir',
+        'hedefine çok yaklaştın,devam et',
+        'bugün kendin için bir şey yap',
+        'disiplin = özgürlük',
+        'her yudum sağlığın için',
+        'bırakma,ilerliyosun',
+        'vücüdun sana teşekkür edecek',
+        'motivasyon değil, disiplin kazan',
+        'Sen bugünü değil, geleceğini şekillendiriyorsun!',
+        'Harika gidiyorsun, devam et!'
+      ];
+
+      function getRandomMotivation() {
+        const index = Math.floor(Math.random() *motivationMessages.length);
+        return motivationMessages[index];
+      }
+
+
+
+      // history i ekrana yazdırma
+
+      function renderHistory() {
+      const historyList = document.getElementById('historyList')  ;
+      historyList.innerHTML ='';
+
+      history.forEach (item => {
+        const li = document.createElement('li');
+        li.textContent= `${item.date} - Hedef: ${item.goal} ml, içilen: ${item.drank} ml`;
+        historyList.appendChild(li);
+      });
+      }
+
+      renderHistory();
+
+
+       //STEP 4: updateProgress() Fonksiyonu
+    function updateProgress() {
+  let percent = (currentAmount / dailyGoal) * 100;
+  progressBar.style.width = percent + "%";
+
+  
+}
+
+
+   
+
+    //STEP 5: 'hedefi kaydet' Butonunun Mantığı 
+
+
+    setGoalBtn.addEventListener('click', function() { 
+
+    dailyGoal = Number(goalInput.value);
+
+    if(dailyGoal <= 0) {
+      message.textContent = 'Lütfen geçerli bir hedef yaz!';
+      return;
+    }
+
+
+    currentAmount = 0;
+    currentAmountText.textContent =0;
+    progressBar.style.width = '0%';
+    message.textContent ='';
+
+  // Hedef kaydedildi → LocalStorage'a yaz
+  localStorage.setItem('dailyGoal', dailyGoal);
+  localStorage.setItem('currentAmount', currentAmount);
+
+    });
+
+
+    //STEP 6: +200 ml Su ekleme işlemi
+
+    addWaterBtn.addEventListener('click', function() {
+
+      currentAmount +=200;   // a)200 ml ekle
+
+      currentAmountText.textContent = currentAmount;  //b)ekrandaki yazıyı güncelle
+
+     updateProgress();
+
+
+      //c) hedefe ulaşıldı mı?
+      if(currentAmount >= dailyGoal) {
+        message.textContent = '!TEBRİKLER! Hedefi Tamamladın.'
+      }else {
+        message.textContent = getRandomMotivation();
+      }
+
+
+      // LocalStorage'a yaz
+      localStorage.setItem('currentAmount', currentAmount);
+      });
+
+
+
+      //STEP 7: RESET BUTONU
+
+      resetBtn.addEventListener('click',function() {
+
+
+
+         //gün bitmeden önce geçmişi, kaydet 
+        history.push({
+          date: new Date().toLocaleDateString(),
+          goal: dailyGoal,
+          drank:currentAmount
+        });
+
+
+        //yeni history i localstorage a kaydet
+        localStorage.setItem('history',JSON.stringify(history));
+
+
+        //veriyi sıfırla
+        currentAmount=0;
+        dailyGoal= 0;
+
+        currentAmountText.textContent =0;
+        goalInput.value ='';
+        progressBar.style.width = '0%';
+        message.textContent = '';
+
+        // Güncel history listesini ekrana yazdır
+        renderHistory();
+
+
+        //localStorage tamamen temizlensin
+        localStorage.removeItem('dailyGoal');
+        localStorage.removeItem('currentAmount');
+      });
+
+
+    
+
+
+   
+
+
+
+
+
+
+
+
+
+
+  </script>
+</body>
+</html>
